@@ -4,9 +4,17 @@ function loginApi(data) {
       'method': 'post',
       data
     })
-  }
+}
 
-function loginoutApi() {
+function sendMsgApi(data) {
+    return $axios({
+        'url': '/user/sendMsg',
+        'method': 'post',
+        data
+    })
+}
+
+function logoutApi() {
   return $axios({
     'url': '/user/loginout',
     'method': 'post',
