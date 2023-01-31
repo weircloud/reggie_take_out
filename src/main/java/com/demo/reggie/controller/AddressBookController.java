@@ -38,7 +38,7 @@ public class AddressBookController {
      * @param addressBook
      * @return
      */
-    @PostMapping("default")
+    @PutMapping("default")
     public R<AddressBook> setDefault(@RequestBody AddressBook addressBook) {
         log.info("addressBook:{}", addressBook);
         LambdaUpdateWrapper<AddressBook> wrapper = new LambdaUpdateWrapper<>();
