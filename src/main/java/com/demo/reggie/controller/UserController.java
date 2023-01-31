@@ -8,6 +8,7 @@ import com.demo.reggie.utils.SMSUtils;
 import com.demo.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/user")
@@ -23,6 +25,9 @@ public class UserController {
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 发送手机短信验证码
@@ -43,12 +48,15 @@ public class UserController {
         //SMSUtils.sendMessage("瑞吉外卖", "", phone, code);
         
         // 4. 将验证码保存到 Session
-        session.setAttribute(phone, code);
+        //session.setAttribute(phone, code);
+        
+        // 将生成的验证码缓存到 redis中，设置有效期为5分钟
+        redisTemplate.opsForValue().set(phone, code, 5, TimeUnit.MINUTES);
         return R.success("手机验证码发送成功");
     }
 
     /**
-     * 移动用户登录
+     * 移动端用户登录
      * @param map
      * @param session
      * @return
@@ -63,7 +71,10 @@ public class UserController {
         String code = map.get("code").toString();
 
         // 从 session 获取保存的验证码
-        Object codeInSession = session.getAttribute(phone);
+        //Object codeInSession = session.getAttribute(phone);
+        
+        // 从redis 中获取缓存的验证码
+        Object codeInSession = redisTemplate.opsForValue().get(phone);
         
         if (codeInSession == null || !(code.equals(codeInSession)))
             return R.error("登陆失败");
@@ -83,6 +94,7 @@ public class UserController {
             userService.save(user);
         }
         session.setAttribute("user", user.getId());
+        redisTemplate.delete(phone);
         return R.success(user);
     }
 }
