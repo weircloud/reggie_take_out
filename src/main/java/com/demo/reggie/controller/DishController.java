@@ -13,6 +13,8 @@ import com.demo.reggie.service.DishService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,11 +43,14 @@ public class DishController {
 
     /**
      * 新增菜品
-     *
+     * CachePut: 将方法返回值放入缓存
+     * Value: 缓存的名称，每个缓存名称下面可以有多个 key 
+     * key: 缓存的 key
      * @param dishDto
      * @return
      */
     @PostMapping
+    @CachePut(value = "userCache", key = "#dishDto.categoryId")
     public R<String> save(@RequestBody DishDto dishDto) {
         log.info(dishDto.toString());
 
@@ -131,9 +136,14 @@ public class DishController {
 
     /**
      * 修改菜品
+     * Cacheable: 在方法执行前 spring 线查看缓存中是否有数据，如果有数据，则直接返回缓存数据；若没有数据
+     *            调用方法并将方法返回值放到缓存中
+     * condition: 条件，满足条件时才缓存数据
+     * unless: 满足条件则不缓存
      * @param dishDto
      * @return
      */
+    @Cacheable(value = "userCache", key = "#result.id", condition = "#result != null ")
     @PutMapping
     public R<String> update(@RequestBody DishDto dishDto) {
         log.info(dishDto.toString());
@@ -171,11 +181,12 @@ public class DishController {
         List<Dish> list = dishService.list(queryWrapper);
         return R.success(list);
     }*/
+    @Cacheable(value = "userCache", key = "#dish.CategoruId + '_' + #dish.CategoruName")
     @GetMapping("/list")
     public R<List<DishDto>> list(Dish dish) {
         List<DishDto> dishDtoList = null;
         
-        String key = "dish_" + dish.getCategoryId() + "_" + dish.getStatus(); // dish_dishCategoryId_dishStatus
+        String key = "dish_" + dish.getCategoryId() + '_' + dish.getStatus(); // dish_dishCategoryId_dishStatus
         
         // 从 redis 中获取缓存数据
         dishDtoList = (List<DishDto>) redisTemplate.opsForValue().get(key);
@@ -184,7 +195,6 @@ public class DishController {
             // 如果存在，直接返回，无需查询数据库
             return R.success(dishDtoList);
         }
-        
         
         // 构造查询条件对象
         LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
